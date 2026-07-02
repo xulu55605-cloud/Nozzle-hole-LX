@@ -1,0 +1,24 @@
+{
+  "name": "孔径与流量系数计算工具",
+  "short_name": "孔径计算",
+  "description": "Fuel Injector Engineering 计算工具",
+  "start_url": "index.html",
+  "display": "standalone",
+  "background_color": "#f0f4fa",
+  "theme_color": "#2563eb",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}

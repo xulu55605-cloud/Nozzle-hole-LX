@@ -1,0 +1,999 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>喷孔计算工具</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f0f4fa;
+    --surface: #ffffff;
+    --surface2: #f5f7fc;
+    --border: #dde3f0;
+    --accent: #2563eb;
+    --accent2: #7c3aed;
+    --accent-glow: rgba(37,99,235,0.12);
+    --text: #1a2033;
+    --text-muted: #6170a0;
+    --output-bg: #eef4ff;
+    --output-border: #2563eb;
+    --output-text: #1d4ed8;
+    --tab-active-bg: linear-gradient(135deg, rgba(37,99,235,0.08), rgba(124,58,237,0.06));
+  }
+
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 20px 80px;
+  }
+
+  header { text-align: center; margin-bottom: 36px; }
+
+  .logo-badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 24px; padding: 6px 16px; font-size: 11px;
+    font-weight: 500; color: var(--text-muted); letter-spacing: 0.08em;
+    text-transform: uppercase; margin-bottom: 20px;
+    box-shadow: 0 1px 4px rgba(37,99,235,0.06);
+  }
+  .logo-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--accent); box-shadow: 0 0 6px var(--accent);
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  h1 {
+    font-size: 28px; font-weight: 600; letter-spacing: -0.02em;
+    background: linear-gradient(135deg, #1a2033 20%, #2563eb 80%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text; margin-bottom: 8px;
+  }
+  .subtitle { font-size: 13px; color: var(--text-muted); font-weight: 400; }
+
+  .card {
+    width: 100%; max-width: 620px; background: var(--surface);
+    border: 1px solid var(--border); border-radius: 20px; overflow: hidden;
+    box-shadow: 0 4px 24px rgba(37,99,235,0.08), 0 1px 4px rgba(0,0,0,0.05);
+  }
+
+  /* Tabs */
+  .tabs {
+    display: flex; border-bottom: 1px solid var(--border);
+    background: #f8faff; position: relative;
+  }
+  .tab-btn {
+    flex: 1; padding: 16px 12px; background: none; border: none;
+    cursor: pointer; font-family: inherit; font-size: 13px; font-weight: 500;
+    color: var(--text-muted); position: relative;
+    transition: color 0.25s ease; letter-spacing: 0.01em;
+  }
+  .tab-btn.active { color: var(--accent); }
+  .tab-indicator {
+    position: absolute; bottom: 0; height: 2px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    border-radius: 2px 2px 0 0;
+    transition: left 0.35s cubic-bezier(0.4,0,0.2,1), width 0.35s cubic-bezier(0.4,0,0.2,1);
+    box-shadow: 0 0 8px rgba(37,99,235,0.4);
+  }
+  .tab-bg {
+    position: absolute; top: 0; bottom: 0;
+    background: var(--tab-active-bg);
+    transition: left 0.35s cubic-bezier(0.4,0,0.2,1), width 0.35s cubic-bezier(0.4,0,0.2,1);
+    pointer-events: none;
+  }
+
+  /* Panels */
+  .panels-wrapper { overflow: hidden; position: relative; }
+  .panels-track {
+    display: flex;
+    transition: transform 0.4s cubic-bezier(0.4,0,0.2,1);
+    will-change: transform;
+  }
+  .panel { min-width: 100%; padding: 28px 28px 24px; }
+
+  /* Section title */
+  .section-title {
+    font-size: 11px; font-weight: 600; color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 16px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .section-title::after { content:''; flex:1; height:1px; background:var(--border); }
+
+  /* Fields */
+  .field {
+    display: grid; grid-template-columns: 1fr 140px 64px;
+    align-items: center; gap: 10px; margin-bottom: 12px;
+  }
+  .field label { font-size: 13px; color: var(--text-muted); line-height: 1.4; }
+  .field label span {
+    display: block; font-size: 11px; color: #9aa0c0;
+    margin-top: 1px; font-family: 'JetBrains Mono', monospace;
+  }
+  .field input {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 9px 12px; color: var(--text);
+    font-family: 'JetBrains Mono', monospace; font-size: 13px;
+    font-weight: 500; outline: none; width: 100%;
+    transition: border-color 0.2s, box-shadow 0.2s; text-align: right;
+  }
+  .field input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-glow); background: #fff;
+  }
+  .field .unit {
+    font-size: 11px; color: var(--text-muted);
+    font-family: 'JetBrains Mono', monospace; white-space: nowrap;
+  }
+
+  /* Output */
+  .output-section { margin-top: 24px; border-top: 1px solid var(--border); padding-top: 20px; }
+  .output-field { display: grid; grid-template-columns: 1fr 140px 64px; align-items: center; gap: 10px; }
+  .output-field label { font-size: 13px; color: var(--text); font-weight: 500; line-height: 1.4; }
+  .output-field label span { display:block; font-size:11px; color:#9aa0c0; margin-top:1px; font-family:'JetBrains Mono',monospace; font-weight:400; }
+  .output-value {
+    background: var(--output-bg); border: 1px solid var(--output-border);
+    border-radius: 8px; padding: 10px 14px; color: var(--output-text);
+    font-family: 'JetBrains Mono', monospace; font-size: 15px; font-weight: 600;
+    text-align: right; box-shadow: 0 0 0 3px rgba(37,99,235,0.06);
+    transition: all 0.3s ease; position: relative; overflow: hidden;
+  }
+  .output-value::before {
+    content:''; position:absolute; top:0; left:-100%; width:60%; height:100%;
+    background: linear-gradient(90deg, transparent, rgba(37,99,235,0.05), transparent);
+    animation: shimmer 2.5s ease-in-out infinite;
+  }
+  @keyframes shimmer { 0%{left:-100%} 100%{left:200%} }
+  .output-value.updating { animation: flash 0.3s ease; }
+  @keyframes flash { 0%{box-shadow:0 0 0 4px rgba(37,99,235,0.25)} 100%{box-shadow:0 0 0 3px rgba(37,99,235,0.06)} }
+  .output-unit { font-size:11px; color:var(--accent); font-family:'JetBrains Mono',monospace; font-weight:500; white-space:nowrap; }
+
+  /* Formula hint */
+  .formula-hint {
+    margin-top: 20px; padding: 12px 14px; background: #f8faff;
+    border: 1px solid var(--border); border-radius: 10px;
+    font-family: 'JetBrains Mono', monospace; font-size: 11px;
+    color: var(--text-muted); line-height: 1.7;
+  }
+  .formula-hint strong {
+    color: #9aa0c0; display: block; margin-bottom: 4px;
+    font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em;
+  }
+
+  /* ── Sweep section ── */
+  .sweep-section {
+    margin-top: 28px; border-top: 2px dashed var(--border); padding-top: 24px;
+  }
+  .sweep-header {
+    display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px;
+  }
+  .sweep-title-block { display:flex; align-items:center; gap:10px; }
+  .sweep-icon {
+    width:28px; height:28px; border-radius:8px;
+    background: linear-gradient(135deg,#eef4ff,#e0e8ff);
+    border:1px solid #c7d9ff; display:flex; align-items:center; justify-content:center;
+    font-size:14px;
+  }
+  .sweep-label { font-size:13px; font-weight:600; color:var(--text); }
+  .sweep-sublabel { font-size:11px; color:var(--text-muted); margin-top:1px; }
+
+  .sweep-param-row {
+    display: grid; grid-template-columns: 1fr auto;
+    align-items: center; gap: 10px; margin-bottom: 14px;
+  }
+  .sweep-param-row select {
+    width:100%; background:var(--surface2); border:1px solid var(--border);
+    border-radius:8px; padding:9px 12px; color:var(--text);
+    font-family:inherit; font-size:13px; outline:none;
+    transition:border-color 0.2s; cursor:pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236170a0' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 12px center;
+  }
+  .sweep-param-row select:focus { border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-glow); }
+
+  .sweep-range-row {
+    display: grid; grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px; margin-bottom: 14px;
+  }
+  .sweep-range-item label {
+    font-size: 10px; font-weight:600; color:var(--text-muted);
+    text-transform:uppercase; letter-spacing:0.08em; display:block; margin-bottom:5px;
+  }
+  .sweep-range-item input {
+    width:100%; background:var(--surface2); border:1px solid var(--border);
+    border-radius:8px; padding:8px 10px; color:var(--text);
+    font-family:'JetBrains Mono',monospace; font-size:13px; font-weight:500;
+    outline:none; text-align:center; transition:border-color 0.2s, box-shadow 0.2s;
+  }
+  .sweep-range-item input:focus {
+    border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-glow); background:#fff;
+  }
+
+  .btn-sweep {
+    width:100%; padding:11px; border:none; border-radius:10px; cursor:pointer;
+    font-family:inherit; font-size:13px; font-weight:600; letter-spacing:0.02em;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color:#fff; transition: opacity 0.2s, transform 0.1s;
+    box-shadow: 0 2px 12px rgba(37,99,235,0.25);
+  }
+  .btn-sweep:hover { opacity:0.9; }
+  .btn-sweep:active { transform:scale(0.99); }
+
+  /* Chart history list */
+  .charts-area { margin-top: 24px; }
+  .chart-list { display:flex; flex-direction:column; gap:14px; }
+
+  .chart-card {
+    background: var(--surface2); border:1px solid var(--border);
+    border-radius:14px; overflow:hidden;
+    transition: box-shadow 0.2s;
+  }
+  .chart-card.selected {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-glow);
+  }
+  .chart-card-header {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:12px 14px; background:var(--surface); border-bottom:1px solid var(--border);
+    cursor:pointer; user-select:none;
+  }
+  .chart-card-meta { display:flex; align-items:center; gap:10px; }
+  .chart-card-checkbox {
+    width:16px; height:16px; border:2px solid var(--border); border-radius:4px;
+    display:flex; align-items:center; justify-content:center;
+    flex-shrink:0; transition: background 0.15s, border-color 0.15s;
+    cursor: pointer;
+  }
+  .chart-card.selected .chart-card-checkbox {
+    background: var(--accent); border-color:var(--accent);
+  }
+  .chart-card.selected .chart-card-checkbox::after {
+    content:'✓'; color:#fff; font-size:10px; font-weight:700;
+  }
+  .chart-card-title { font-size:12px; font-weight:600; color:var(--text); }
+  .chart-card-subtitle { font-size:11px; color:var(--text-muted); margin-top:1px; }
+  .chart-card-actions { display:flex; gap:6px; }
+  .btn-icon {
+    width:28px; height:28px; border:1px solid var(--border); border-radius:7px;
+    background:var(--surface2); cursor:pointer; display:flex;
+    align-items:center; justify-content:center; font-size:13px;
+    transition:background 0.15s, border-color 0.15s;
+  }
+  .btn-icon:hover { background:#e8edff; border-color:#c7d9ff; }
+  .chart-canvas-wrap { padding:16px; }
+  canvas.chart-cvs { width:100%!important; max-height:220px; }
+
+  /* Merge bar */
+  .merge-bar {
+    display:none; margin-top:14px; padding:14px 16px;
+    background:linear-gradient(135deg,#eef4ff,#f4f0ff);
+    border:1px solid #c7d9ff; border-radius:12px;
+    align-items:center; justify-content:space-between; gap:12px;
+  }
+  .merge-bar.visible { display:flex; }
+  .merge-info { font-size:12px; color:var(--accent); font-weight:500; }
+  .btn-merge {
+    padding:8px 18px; border:none; border-radius:8px; cursor:pointer;
+    font-family:inherit; font-size:12px; font-weight:600;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color:#fff; transition:opacity 0.2s;
+    box-shadow:0 2px 8px rgba(37,99,235,0.25);
+    white-space:nowrap;
+  }
+  .btn-merge:hover { opacity:0.9; }
+
+  /* Merged chart modal */
+  .modal-overlay {
+    display:none; position:fixed; inset:0; z-index:1000;
+    background:rgba(15,20,40,0.45); backdrop-filter:blur(4px);
+    align-items:center; justify-content:center; padding:20px;
+  }
+  .modal-overlay.open { display:flex; }
+  .modal-box {
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:20px; width:100%; max-width:700px;
+    box-shadow:0 24px 64px rgba(0,0,0,0.18);
+    overflow:hidden; animation:modalIn 0.28s cubic-bezier(0.4,0,0.2,1);
+  }
+  @keyframes modalIn { from{transform:scale(0.94);opacity:0} to{transform:scale(1);opacity:1} }
+  .modal-header {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:18px 22px; border-bottom:1px solid var(--border);
+  }
+  .modal-title { font-size:15px; font-weight:600; color:var(--text); }
+  .btn-close {
+    width:30px; height:30px; border:1px solid var(--border); border-radius:8px;
+    background:var(--surface2); cursor:pointer; font-size:16px; color:var(--text-muted);
+    display:flex; align-items:center; justify-content:center; transition:background 0.15s;
+  }
+  .btn-close:hover { background:#ffe4e4; border-color:#ffb3b3; color:#c0392b; }
+  .modal-body { padding:22px; }
+  .modal-footer {
+    padding:14px 22px; border-top:1px solid var(--border);
+    display:flex; justify-content:flex-end; gap:10px;
+  }
+  .btn-secondary {
+    padding:8px 18px; border:1px solid var(--border); border-radius:8px;
+    background:var(--surface2); cursor:pointer; font-family:inherit;
+    font-size:13px; font-weight:500; color:var(--text-muted);
+    transition:background 0.15s;
+  }
+  .btn-secondary:hover { background:#e8edff; }
+  .btn-primary {
+    padding:8px 18px; border:none; border-radius:8px; cursor:pointer;
+    font-family:inherit; font-size:13px; font-weight:600; color:#fff;
+    background:linear-gradient(135deg,var(--accent),var(--accent2));
+    transition:opacity 0.2s; box-shadow:0 2px 8px rgba(37,99,235,0.25);
+  }
+  .btn-primary:hover { opacity:0.9; }
+
+  canvas#mergedCanvas { width:100%!important; }
+
+  /* ── 新增：高清图片导出预览专属弹窗样式 ── */
+  .export-tip {
+    background: #fff9db; color: #b58105; font-size: 12px; font-weight: 500;
+    padding: 10px 14px; border-bottom: 1px solid #fef3c7; text-align: center;
+  }
+  .modal-img-wrap {
+    padding: 20px; background: #f1f5f9; display: flex; justify-content: center;
+    max-height: 55vh; overflow-y: auto;
+  }
+  .modal-img-wrap img {
+    max-width: 100%; height: auto; border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12); background: #fff;
+  }
+
+  /* Author */
+  .author {
+    position:fixed; bottom:20px; right:24px; font-size:13px;
+    color:#9aa0c0; font-weight:500; letter-spacing:0.04em; transition:color 0.2s;
+  }
+  .author:hover { color:var(--accent); }
+
+  .empty-state {
+    text-align:center; padding:32px 20px; color:var(--text-muted); font-size:13px;
+  }
+  .empty-state .icon { font-size:32px; margin-bottom:10px; opacity:0.5; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo-badge"><div class="logo-dot"></div>Fuel Injector Engineering</div>
+  <h1>喷孔计算工具</h1>
+  <p class="subtitle">孔径 · 流量系数 双模计算</p>
+</header>
+
+<div class="card">
+  <div class="tabs" id="tabs">
+    <div class="tab-bg" id="tabBg"></div>
+    <button class="tab-btn active" onclick="switchTab(0)" id="tab0">孔径计算工具</button>
+    <button class="tab-btn" onclick="switchTab(1)" id="tab1">流量系数计算工具</button>
+    <div class="tab-indicator" id="tabIndicator"></div>
+  </div>
+
+  <div class="panels-wrapper">
+    <div class="panels-track" id="panelsTrack">
+
+      <div class="panel">
+        <div class="section-title">输入参数</div>
+        <div class="field">
+          <label>Q<sub>hyd</sub>（流量）<span>Qhyd</span></label>
+          <input type="number" id="p1_q" value="650" step="1" oninput="calcD()">
+          <span class="unit">cm³/30″</span>
+        </div>
+        <div class="field">
+          <label>燃油压力（相对）<span>Fuel Pressure</span></label>
+          <input type="number" id="p1_pf" value="100" step="1" oninput="calcD()">
+          <span class="unit">bar</span>
+        </div>
+        <div class="field">
+          <label>背压（相对）<span>Backpressure</span></label>
+          <input type="number" id="p1_pb" value="0" step="1" oninput="calcD()">
+          <span class="unit">bar</span>
+        </div>
+        <div class="field">
+          <label>孔数<span>NSP</span></label>
+          <input type="number" id="p1_n" value="9" step="1" min="1" oninput="calcD()">
+          <span class="unit">—</span>
+        </div>
+        <div class="field">
+          <label>燃油密度<span>ρ</span></label>
+          <input type="number" id="p1_rho" value="0.81" step="0.01" oninput="calcD()">
+          <span class="unit">kg/dm³</span>
+        </div>
+        <div class="field">
+          <label>流量系数<span>µ</span></label>
+          <input type="number" id="p1_mu" value="0.877" step="0.001" oninput="calcD()">
+          <span class="unit">—</span>
+        </div>
+
+        <div class="output-section">
+          <div class="section-title">计算结果</div>
+          <div class="output-field">
+            <label>出口孔径<span>DSP (出口)</span></label>
+            <div class="output-value" id="p1_result">—</div>
+            <span class="output-unit">mm</span>
+          </div>
+        </div>
+
+        <div class="formula-hint">
+          <strong>计算公式</strong>
+          D = √[ (Q/30) / (N · µ · π/4 · √(2·ΔP/ρ)) ]<br>
+          ΔP = P<sub>fuel</sub> − P<sub>back</sub>，ΔP 单位转为 dyn/cm²
+        </div>
+
+        <div class="sweep-section">
+          <div class="sweep-header">
+            <div class="sweep-title-block">
+              <div class="sweep-icon">📈</div>
+              <div>
+                <div class="sweep-label">参数扫描 &amp; 图表</div>
+                <div class="sweep-sublabel">变化一个输入，观察孔径 D 的变化趋势</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="section-title">扫描参数</div>
+          <div class="sweep-param-row">
+            <select id="sweepParam">
+              <option value="q">Q_hyd — 流量 (cm³/30″)</option>
+              <option value="pf">Fuel Pressure — 燃油压力 (bar)</option>
+              <option value="pb">Backpressure — 背压 (bar)</option>
+              <option value="n">NSP — 孔数</option>
+              <option value="rho">ρ — 燃油密度 (kg/dm³)</option>
+              <option value="mu">µ — 流量系数</option>
+            </select>
+          </div>
+
+          <div class="section-title">扫描范围</div>
+          <div class="sweep-range-row">
+            <div class="sweep-range-item">
+              <label>起始值</label>
+              <input type="number" id="sweepFrom" value="50">
+            </div>
+            <div class="sweep-range-item">
+              <label>终止值</label>
+              <input type="number" id="sweepTo" value="200">
+            </div>
+            <div class="sweep-range-item">
+              <label>步长</label>
+              <input type="number" id="sweepStep" value="10" min="0.0001">
+            </div>
+          </div>
+
+          <button class="btn-sweep" onclick="runSweep()">▶ 生成图表</button>
+
+          <div class="charts-area" id="chartsArea" style="display:none">
+            <div class="section-title" style="margin-top:20px">历史图表</div>
+            <div class="merge-bar" id="mergeBar">
+              <div class="merge-info" id="mergeInfo">已选 0 张图表</div>
+              <button class="btn-merge" onclick="openMergeModal()">合并对比图 →</button>
+            </div>
+            <div class="chart-list" id="chartList"></div>
+          </div>
+        </div>
+        </div>
+
+      <div class="panel">
+        <div class="section-title">输入参数</div>
+        <div class="field">
+          <label>Q<sub>hyd</sub>（流量）<span>Qhyd</span></label>
+          <input type="number" id="p2_q" value="650" step="1" oninput="calcMu()">
+          <span class="unit">cm³/30″</span>
+        </div>
+        <div class="field">
+          <label>燃油压力（相对）<span>Fuel Pressure</span></label>
+          <input type="number" id="p2_pf" value="100" step="1" oninput="calcMu()">
+          <span class="unit">bar</span>
+        </div>
+        <div class="field">
+          <label>背压（相对）<span>Backpressure</span></label>
+          <input type="number" id="p2_pb" value="0" step="1" oninput="calcMu()">
+          <span class="unit">bar</span>
+        </div>
+        <div class="field">
+          <label>孔数<span>NSP</span></label>
+          <input type="number" id="p2_n" value="9" step="1" min="1" oninput="calcMu()">
+          <span class="unit">—</span>
+        </div>
+        <div class="field">
+          <label>出口孔径<span>DSP (出口)</span></label>
+          <input type="number" id="p2_d" value="0.149" step="0.001" oninput="calcMu()">
+          <span class="unit">mm</span>
+        </div>
+        <div class="field">
+          <label>燃油密度<span>ρ</span></label>
+          <input type="number" id="p2_rho" value="0.81" step="0.01" oninput="calcMu()">
+          <span class="unit">kg/dm³</span>
+        </div>
+
+        <div class="output-section">
+          <div class="section-title">计算结果</div>
+          <div class="output-field">
+            <label>流量系数<span>µ (Cd)</span></label>
+            <div class="output-value" id="p2_result">—</div>
+            <span class="output-unit">—</span>
+          </div>
+        </div>
+
+        <div class="formula-hint">
+          <strong>计算公式</strong>
+          µ = (Q/30) / [ N · (π/4) · D² · √(2·ΔP/ρ) ]<br>
+          D 单位：mm → cm，ΔP 单位：bar → dyn/cm²
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="mergeModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div class="modal-title">📊 多图合并对比</div>
+      <button class="btn-close" onclick="closeMergeModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <canvas id="mergedCanvas" height="320"></canvas>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeMergeModal()">关闭</button>
+      <button class="btn-primary" onclick="saveMergedChart()">⬇ 生成图片</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="imgPreviewModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div class="modal-title" id="previewModalTitle">🖼 查看图表大图</div>
+      <button class="btn-close" onclick="closePreviewModal()">×</button>
+    </div>
+    <div class="export-tip">💡 提示：电脑端用户请【右键图片 -> 图片另存为】；手机端用户请【长按图片】保存到相册</div>
+    <div class="modal-img-wrap">
+      <img id="previewImg" src="" alt="图表生成中...">
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closePreviewModal()">关闭</button>
+    </div>
+  </div>
+</div>
+
+<div class="author">作者：LU Xu</div>
+
+<script>
+// ── Tab logic ──
+let currentTab = 0;
+function switchTab(idx) {
+  currentTab = idx;
+  document.querySelectorAll('.tab-btn').forEach((btn, i) => btn.classList.toggle('active', i === idx));
+  document.getElementById('panelsTrack').style.transform = 'translateX(-' + (idx * 100) + '%)';
+  updateIndicator(idx);
+}
+function updateIndicator(idx) {
+  const tabs = document.getElementById('tabs');
+  const btns = tabs.querySelectorAll('.tab-btn');
+  const btn = btns[idx];
+  const indicator = document.getElementById('tabIndicator');
+  const bg = document.getElementById('tabBg');
+  const tR = tabs.getBoundingClientRect();
+  const bR = btn.getBoundingClientRect();
+  const left = bR.left - tR.left, width = bR.width;
+  indicator.style.left = left + 'px'; indicator.style.width = width + 'px';
+  bg.style.left = left + 'px'; bg.style.width = width + 'px';
+}
+window.addEventListener('load', () => { updateIndicator(0); calcD(); calcMu(); });
+window.addEventListener('resize', () => updateIndicator(currentTab));
+
+// ── Core calc ──
+function flash(el) { el.classList.remove('updating'); void el.offsetWidth; el.classList.add('updating'); }
+
+function computeD(Q, pf, pb, N, rho, mu) {
+  const dP = pf - pb;
+  if (dP <= 0 || N <= 0 || rho <= 0 || mu <= 0) return null;
+  const v = Math.sqrt(2 * dP * 1e6 / rho);
+  return Math.sqrt((Q / 30) / (N * mu * (Math.PI / 4) * v)) * 10;
+}
+
+function calcD() {
+  const Q = parseFloat(document.getElementById('p1_q').value);
+  const pf = parseFloat(document.getElementById('p1_pf').value);
+  const pb = parseFloat(document.getElementById('p1_pb').value);
+  const N = parseFloat(document.getElementById('p1_n').value);
+  const rho = parseFloat(document.getElementById('p1_rho').value);
+  const mu = parseFloat(document.getElementById('p1_mu').value);
+  const el = document.getElementById('p1_result');
+  const d = (!isFinite(Q)||!isFinite(pf)||!isFinite(pb)||!isFinite(N)||!isFinite(rho)||!isFinite(mu))
+    ? null : computeD(Q, pf, pb, N, rho, mu);
+  flash(el);
+  el.textContent = d != null ? d.toFixed(5) : '—';
+}
+
+function calcMu() {
+  const Q = parseFloat(document.getElementById('p2_q').value);
+  const pf = parseFloat(document.getElementById('p2_pf').value);
+  const pb = parseFloat(document.getElementById('p2_pb').value);
+  const N = parseFloat(document.getElementById('p2_n').value);
+  const D_mm = parseFloat(document.getElementById('p2_d').value);
+  const rho = parseFloat(document.getElementById('p2_rho').value);
+  const el = document.getElementById('p2_result');
+  const dP = pf - pb;
+  if (!isFinite(Q)||!isFinite(dP)||!isFinite(N)||!isFinite(D_mm)||!isFinite(rho)||dP<=0||N<=0||D_mm<=0||rho<=0) {
+    el.textContent = '—'; return;
+  }
+  const v = Math.sqrt(2 * dP * 1e6 / rho);
+  const D_cm = D_mm / 10;
+  const mu = (Q / 30) / (N * (Math.PI / 4) * D_cm * D_cm * v);
+  flash(el); el.textContent = mu.toFixed(6);
+}
+
+// ── Sweep ──
+const PARAM_LABELS = {
+  q: 'Q_hyd (cm³/30″)', pf: '燃油压力 (bar)', pb: '背压 (bar)',
+  n: '孔数 NSP', rho: 'ρ (kg/dm³)', mu: 'µ 流量系数'
+};
+const PALETTE = [
+  '#2563eb','#7c3aed','#0891b2','#059669','#d97706','#dc2626',
+  '#6366f1','#0d9488','#b45309','#9333ea'
+];
+let chartStore = []; 
+let mergeChartInstance = null;
+
+function getBaseParams() {
+  return {
+    q: parseFloat(document.getElementById('p1_q').value),
+    pf: parseFloat(document.getElementById('p1_pf').value),
+    pb: parseFloat(document.getElementById('p1_pb').value),
+    n: parseFloat(document.getElementById('p1_n').value),
+    rho: parseFloat(document.getElementById('p1_rho').value),
+    mu: parseFloat(document.getElementById('p1_mu').value),
+  };
+}
+
+function runSweep() {
+  const param = document.getElementById('sweepParam').value;
+  const from = parseFloat(document.getElementById('sweepFrom').value);
+  const to = parseFloat(document.getElementById('sweepTo').value);
+  const step = Math.abs(parseFloat(document.getElementById('sweepStep').value));
+  if (!isFinite(from)||!isFinite(to)||!isFinite(step)||step<=0||from>=to) {
+    alert('请检查扫描范围与步长设置（起始 < 终止，步长 > 0）'); return;
+  }
+  const base = getBaseParams();
+  const xs = [], ys = [];
+  for (let x = from; x <= to + 1e-9; x += step) {
+    x = Math.round(x * 1e8) / 1e8;
+    const p = Object.assign({}, base);
+    p[param] = x;
+    const d = computeD(p.q, p.pf, p.pb, p.n, p.rho, p.mu);
+    if (d != null && isFinite(d)) { xs.push(+x.toFixed(6)); ys.push(+d.toFixed(6)); }
+  }
+  if (xs.length === 0) { alert('扫描范围内无有效计算结果，请检查参数设置'); return; }
+
+  const colorIdx = chartStore.length % PALETTE.length;
+  const color = PALETTE[colorIdx];
+  const id = Date.now();
+  const fixedDesc = Object.entries(base)
+    .filter(([k]) => k !== param)
+    .map(([k,v]) => PARAM_LABELS[k].split(' ')[0] + '=' + v)
+    .join(', ');
+
+  chartStore.push({ id, param, color, xs, ys,
+    label: PARAM_LABELS[param],
+    fixedDesc,
+    base: Object.assign({}, base),
+    step: step,
+    selected: false,
+    chartInstance: null
+  });
+
+  renderChartList();
+  document.getElementById('chartsArea').style.display = 'block';
+}
+
+function renderChartList() {
+  const list = document.getElementById('chartList');
+  list.innerHTML = '';
+  if (chartStore.length === 0) {
+    list.innerHTML = '<div class="empty-state"><div class="icon">📉</div>暂无图表，点击"生成图表"开始扫描</div>';
+    return;
+  }
+  chartStore.forEach((item, idx) => {
+    const card = document.createElement('div');
+    card.className = 'chart-card' + (item.selected ? ' selected' : '');
+    card.id = 'chartcard-' + item.id;
+
+    card.innerHTML =
+      '<div class="chart-card-header" onclick="toggleSelect(' + idx + ')">' +
+        '<div class="chart-card-meta">' +
+          '<div class="chart-card-checkbox"></div>' +
+          '<div>' +
+            '<div class="chart-card-title" style="display:flex;align-items:center;gap:8px">' +
+              '<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:' + item.color + ';flex-shrink:0"></span>' +
+              'D vs ' + item.label +
+            '</div>' +
+            '<div class="chart-card-subtitle">' + item.fixedDesc + '</div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="chart-card-actions" onclick="event.stopPropagation()">' +
+          '<button class="btn-icon" title="导出高清大图" onclick="saveChart(' + idx + ')">⬇</button>' +
+          '<button class="btn-icon" title="删除" onclick="deleteChart(' + idx + ')">🗑</button>' +
+        '</div>' +
+      '</div>' +
+      '<div class="chart-canvas-wrap"><canvas class="chart-cvs" id="cvs-' + item.id + '" height="200"></canvas></div>';
+
+    list.appendChild(card);
+
+    // draw chart
+    const ctx = document.getElementById('cvs-' + item.id).getContext('2d');
+    if (item.chartInstance) item.chartInstance.destroy();
+    item.chartInstance = new Chart(ctx, makeChartConfig(item, false));
+  });
+  updateMergeBar();
+}
+
+function makeChartConfig(item, merged) {
+  return {
+    type: 'line',
+    data: {
+      labels: item.xs,
+      datasets: [{
+        label: 'D (mm)',
+        data: item.ys,
+        borderColor: item.color,
+        backgroundColor: item.color + '18',
+        borderWidth: merged ? 2 : 1.5,
+        pointRadius: item.xs.length > 50 ? 0 : (merged ? 3 : 2),
+        pointHoverRadius: 4,
+        tension: 0.3,
+        fill: !merged,
+      }]
+    },
+    options: {
+      responsive: true,
+      animation: merged ? false : { duration: 400 },
+      plugins: {
+        legend: { display: merged },
+        tooltip: {
+          callbacks: {
+            title: ctx => item.label.split(' ')[0] + ' = ' + ctx[0].label,
+            label: ctx => 'D = ' + ctx.raw + ' mm'
+          }
+        }
+      },
+      scales: {
+        x: {
+          title: { display: true, text: item.label, color: '#6170a0', font: { size: 11 } },
+          grid: { color: '#eef0f8' },
+          ticks: { color: '#6170a0', font: { size: 10 }, maxTicksLimit: 8 }
+        },
+        y: {
+          title: { display: true, text: 'D (mm)', color: '#6170a0', font: { size: 11 } },
+          grid: { color: '#eef0f8' },
+          ticks: { color: '#6170a0', font: { size: 10 } }
+        }
+      }
+    }
+  };
+}
+
+function toggleSelect(idx) {
+  chartStore[idx].selected = !chartStore[idx].selected;
+  renderChartList();
+}
+
+function deleteChart(idx) {
+  if (chartStore[idx].chartInstance) chartStore[idx].chartInstance.destroy();
+  chartStore.splice(idx, 1);
+  renderChartList();
+  if (chartStore.length === 0) document.getElementById('chartsArea').style.display = 'none';
+}
+
+// ── 重构核心逻辑：抛弃 link.click()，升级为 100% 兼容的图片渲染预览引擎 ──
+function exportWithParamLegend(sourceCanvas, paramRows, accentColor, titleText) {
+  const dpr = 2; // 高清抗锯齿
+  const W = sourceCanvas.width;
+
+  const PAD = 16 * dpr;
+  const FONT_TITLE = 'bold ' + (11 * dpr) + 'px Inter, system-ui, sans-serif';
+  const FONT_ITEM  = (11 * dpr) + 'px "JetBrains Mono", monospace';
+  const COLS = 2; // 改为双列排版更防挤压
+  const ITEM_H = 20 * dpr;
+  const rows = Math.ceil(paramRows.length / COLS);
+  const legendH = PAD + (13 * dpr) + 6 * dpr + rows * ITEM_H + PAD;
+
+  const offscreen = document.createElement('canvas');
+  offscreen.width  = W;
+  offscreen.height = legendH + sourceCanvas.height;
+  const c = offscreen.getContext('2d');
+
+  c.fillStyle = '#ffffff';
+  c.fillRect(0, 0, offscreen.width, offscreen.height);
+
+  c.fillStyle = '#f8faff';
+  c.fillRect(0, 0, W, legendH);
+
+  c.strokeStyle = '#dde3f0';
+  c.lineWidth = 1 * dpr;
+  c.beginPath(); c.moveTo(0, legendH - 1); c.lineTo(W, legendH - 1); c.stroke();
+
+  c.fillStyle = accentColor || '#2563eb';
+  c.fillRect(0, 0, 4 * dpr, legendH);
+
+  c.font = FONT_TITLE;
+  c.fillStyle = '#6170a0';
+  c.fillText('参数配置清单', PAD + 4 * dpr, PAD + 11 * dpr);
+
+  const colW = Math.floor((W - 2 * PAD) / COLS);
+  paramRows.forEach((row, i) => {
+    const col = i % COLS;
+    const rowNum = Math.floor(i / COLS);
+    const x = PAD + 4 * dpr + col * colW;
+    const y = PAD + 13 * dpr + 6 * dpr + rowNum * ITEM_H + 13 * dpr;
+
+    c.font = 'bold ' + (10 * dpr) + 'px Inter, system-ui, sans-serif';
+    c.fillStyle = row.isSweep ? (accentColor || '#2563eb') : '#9aa0c0';
+    const labelText = row.label + ':';
+    c.fillText(labelText, x, y);
+
+    c.font = FONT_ITEM;
+    c.fillStyle = row.isSweep ? (accentColor || '#2563eb') : '#1a2033';
+    const lw = c.measureText(labelText).width;
+    c.fillText(row.value, x + lw + 6 * dpr, y);
+  });
+
+  c.drawImage(sourceCanvas, 0, legendH);
+
+  // 缩放回物理逻辑大小输出
+  const finalC = document.createElement('canvas');
+  finalC.width  = offscreen.width  / dpr;
+  finalC.height = offscreen.height / dpr;
+  const fc = finalC.getContext('2d');
+  fc.drawImage(offscreen, 0, 0, finalC.width, finalC.height);
+
+  try {
+    // 将 Canvas 直接转为 Base64 图片赋予到弹出窗口的 <img> 中
+    const dataURL = finalC.toDataURL('image/png', 1);
+    document.getElementById('previewModalTitle').textContent = titleText;
+    document.getElementById('previewImg').src = dataURL;
+    document.getElementById('imgPreviewModal').classList.add('open');
+  } catch(err) {
+    alert('生成图片失败，建议在常规浏览器环境（如 Chrome / Edge）中直接打开此网页。');
+    console.error(err);
+  }
+}
+
+function buildParamRows(item) {
+  const ALL = ['q','pf','pb','n','rho','mu'];
+  const base = item.base || {};
+  return ALL.map(k => ({
+    label: PARAM_LABELS[k].split(' (')[0],
+    value: k === item.param
+      ? item.xs[0] + '→' + item.xs[item.xs.length-1]
+      : (base[k] !== undefined ? String(base[k]) : '—'),
+    isSweep: k === item.param
+  }));
+}
+
+function saveChart(idx) {
+  const item = chartStore[idx];
+  if (!item.chartInstance) return;
+  const rows = buildParamRows(item);
+  exportWithParamLegend(item.chartInstance.canvas, rows, item.color,
+    '📉 单图导出: D vs ' + item.label.split(' ')[0]);
+}
+
+function updateMergeBar() {
+  const sel = chartStore.filter(c => c.selected);
+  const bar = document.getElementById('mergeBar');
+  const info = document.getElementById('mergeInfo');
+  if (sel.length >= 2) {
+    bar.classList.add('visible');
+    info.textContent = '已选 ' + sel.length + ' 张图表，可合并对比';
+  } else {
+    bar.classList.remove('visible');
+  }
+}
+
+// ── Merge modal ──
+function openMergeModal() {
+  const sel = chartStore.filter(c => c.selected);
+  if (sel.length < 2) return;
+
+  document.getElementById('mergeModal').classList.add('open');
+
+  if (mergeChartInstance) { mergeChartInstance.destroy(); mergeChartInstance = null; }
+
+  const ctx = document.getElementById('mergedCanvas').getContext('2d');
+  const sameParam = sel.every(c => c.param === sel[0].param);
+
+  const datasets = sel.map(item => ({
+    label: 'D vs ' + item.label.split(' ')[0] + (item.fixedDesc ? ' [' + item.fixedDesc.substring(0,25) + '...]' : ''),
+    data: item.xs.map((x, i) => ({ x, y: item.ys[i] })),
+    borderColor: item.color,
+    backgroundColor: item.color + '15',
+    borderWidth: 2,
+    pointRadius: item.xs.length > 50 ? 0 : 3,
+    pointHoverRadius: 5,
+    tension: 0.3,
+    fill: false,
+  }));
+
+  mergeChartInstance = new Chart(ctx, {
+    type: 'line',
+    data: { datasets },
+    options: {
+      responsive: true,
+      animation: false,
+      plugins: {
+        legend: {
+          display: true,
+          position: 'top',
+          labels: { font: { size: 11 }, color: '#1a2033', boxWidth: 14, padding: 14 }
+        },
+        tooltip: {
+          mode: 'index', intersect: false,
+          callbacks: { label: ctx => ctx.dataset.label.split('[')[0].trim() + '  D = ' + ctx.raw.y + ' mm' }
+        }
+      },
+      scales: {
+        x: {
+          type: 'linear',
+          title: { display: sameParam, text: sameParam ? sel[0].label : '参数值', color: '#6170a0', font: { size: 11 } },
+          grid: { color: '#eef0f8' },
+          ticks: { color: '#6170a0', font: { size: 10 }, maxTicksLimit: 10 }
+        },
+        y: {
+          title: { display: true, text: 'D (mm)', color: '#6170a0', font: { size: 11 } },
+          grid: { color: '#eef0f8' },
+          ticks: { color: '#6170a0', font: { size: 10 } }
+        }
+      }
+    }
+  });
+}
+
+function closeMergeModal() {
+  document.getElementById('mergeModal').classList.remove('open');
+}
+
+function saveMergedChart() {
+  if (!mergeChartInstance) return;
+  const sel = chartStore.filter(c => c.selected);
+  const rows = sel.map((item, i) => ({
+    label: '曲线' + (i+1) + ' 扫描: ' + PARAM_LABELS[item.param].split(' (')[0],
+    value: item.xs[0] + '→' + item.xs[item.xs.length-1] + ' (' + item.fixedDesc.substring(0, 22) + '...)',
+    isSweep: true
+  }));
+  
+  closeMergeModal(); // 关掉对比框，唤起图片生成框
+  exportWithParamLegend(mergeChartInstance.canvas, rows, '#2563eb', '📊 多图对比合并导出');
+}
+
+// ── 预览弹窗关闭逻辑 ──
+function closePreviewModal() {
+  document.getElementById('imgPreviewModal').classList.remove('open');
+  document.getElementById('previewImg').src = ""; // 释放内存
+}
+
+// 点击空白暗色区域自动关闭
+document.getElementById('mergeModal').addEventListener('click', function(e) {
+  if (e.target === this) closeMergeModal();
+});
+document.getElementById('imgPreviewModal').addEventListener('click', function(e) {
+  if (e.target === this) closePreviewModal();
+});
+</script>
+</body>
+</html>
