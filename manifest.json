@@ -1,0 +1,16 @@
+{
+  "name": "喷孔计算工具",
+  "short_name": "喷孔计算",
+  "description": "孔径 · 流量系数 双模计算工具",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#f0f4fa",
+  "theme_color": "#2563eb",
+  "icons": [
+    {
+      "src": "icon.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    }
+  ]
+}
