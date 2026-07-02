@@ -61,6 +61,17 @@
   }
   .subtitle { font-size: 13px; color: var(--text-muted); font-weight: 400; }
 
+  /* Author CSS - 移至顶部中央样式 */
+  .author {
+    font-size: 13px;
+    color: #9aa0c0;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    margin-top: 6px;
+    transition: color 0.2s;
+  }
+  .author:hover { color: var(--accent); }
+
   .card {
     width: 100%; max-width: 620px; background: var(--surface);
     border: 1px solid var(--border); border-radius: 20px; overflow: hidden;
@@ -170,7 +181,7 @@
     font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em;
   }
 
-  /* ── Sweep section ── */
+  /* Sweep section */
   .sweep-section {
     margin-top: 28px; border-top: 2px dashed var(--border); padding-top: 24px;
   }
@@ -340,7 +351,7 @@
 
   canvas#mergedCanvas { width:100%!important; }
 
-  /* ── 新增：高清图片导出预览专属弹窗样式 ── */
+  /* 高清图片导出预览专属弹窗样式 */
   .export-tip {
     background: #fff9db; color: #b58105; font-size: 12px; font-weight: 500;
     padding: 10px 14px; border-bottom: 1px solid #fef3c7; text-align: center;
@@ -354,13 +365,6 @@
     box-shadow: 0 4px 16px rgba(0,0,0,0.12); background: #fff;
   }
 
-  /* Author */
-  .author {
-    position:fixed; bottom:20px; right:24px; font-size:13px;
-    color:#9aa0c0; font-weight:500; letter-spacing:0.04em; transition:color 0.2s;
-  }
-  .author:hover { color:var(--accent); }
-
   .empty-state {
     text-align:center; padding:32px 20px; color:var(--text-muted); font-size:13px;
   }
@@ -373,6 +377,7 @@
   <div class="logo-badge"><div class="logo-dot"></div>Fuel Injector Engineering</div>
   <h1>喷孔计算工具</h1>
   <p class="subtitle">孔径 · 流量系数 双模计算</p>
+  <div class="author">作者：LU Xu</div>
 </header>
 
 <div class="card">
@@ -571,8 +576,6 @@
   </div>
 </div>
 
-<div class="author">作者：LU Xu</div>
-
 <script>
 // ── Tab logic ──
 let currentTab = 0;
@@ -735,7 +738,6 @@ function renderChartList() {
 
     list.appendChild(card);
 
-    // draw chart
     const ctx = document.getElementById('cvs-' + item.id).getContext('2d');
     if (item.chartInstance) item.chartInstance.destroy();
     item.chartInstance = new Chart(ctx, makeChartConfig(item, false));
@@ -800,15 +802,14 @@ function deleteChart(idx) {
   if (chartStore.length === 0) document.getElementById('chartsArea').style.display = 'none';
 }
 
-// ── 重构核心逻辑：抛弃 link.click()，升级为 100% 兼容的图片渲染预览引擎 ──
 function exportWithParamLegend(sourceCanvas, paramRows, accentColor, titleText) {
-  const dpr = 2; // 高清抗锯齿
+  const dpr = 2; 
   const W = sourceCanvas.width;
 
   const PAD = 16 * dpr;
   const FONT_TITLE = 'bold ' + (11 * dpr) + 'px Inter, system-ui, sans-serif';
   const FONT_ITEM  = (11 * dpr) + 'px "JetBrains Mono", monospace';
-  const COLS = 2; // 改为双列排版更防挤压
+  const COLS = 2; 
   const ITEM_H = 20 * dpr;
   const rows = Math.ceil(paramRows.length / COLS);
   const legendH = PAD + (13 * dpr) + 6 * dpr + rows * ITEM_H + PAD;
@@ -855,7 +856,6 @@ function exportWithParamLegend(sourceCanvas, paramRows, accentColor, titleText) 
 
   c.drawImage(sourceCanvas, 0, legendH);
 
-  // 缩放回物理逻辑大小输出
   const finalC = document.createElement('canvas');
   finalC.width  = offscreen.width  / dpr;
   finalC.height = offscreen.height / dpr;
@@ -863,7 +863,6 @@ function exportWithParamLegend(sourceCanvas, paramRows, accentColor, titleText) 
   fc.drawImage(offscreen, 0, 0, finalC.width, finalC.height);
 
   try {
-    // 将 Canvas 直接转为 Base64 图片赋予到弹出窗口的 <img> 中
     const dataURL = finalC.toDataURL('image/png', 1);
     document.getElementById('previewModalTitle').textContent = titleText;
     document.getElementById('previewImg').src = dataURL;
@@ -977,17 +976,15 @@ function saveMergedChart() {
     isSweep: true
   }));
   
-  closeMergeModal(); // 关掉对比框，唤起图片生成框
+  closeMergeModal(); 
   exportWithParamLegend(mergeChartInstance.canvas, rows, '#2563eb', '📊 多图对比合并导出');
 }
 
-// ── 预览弹窗关闭逻辑 ──
 function closePreviewModal() {
   document.getElementById('imgPreviewModal').classList.remove('open');
-  document.getElementById('previewImg').src = ""; // 释放内存
+  document.getElementById('previewImg').src = ""; 
 }
 
-// 点击空白暗色区域自动关闭
 document.getElementById('mergeModal').addEventListener('click', function(e) {
   if (e.target === this) closeMergeModal();
 });
