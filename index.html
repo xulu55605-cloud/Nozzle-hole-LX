@@ -64,7 +64,7 @@
 
   /* Author CSS - 移至顶部中央样式 */
   .author {
-    font-size: 8px;
+    font-size: 10px;
     color: #9aa0c0;
     font-weight: 500;
     letter-spacing: 0.04em;
@@ -370,6 +370,77 @@
     text-align:center; padding:32px 20px; color:var(--text-muted); font-size:13px;
   }
   .empty-state .icon { font-size:32px; margin-bottom:10px; opacity:0.5; }
+
+  /* Map sweep section */
+  .map-sweep-section {
+    margin-top: 28px; border-top: 2px dashed var(--border); padding-top: 24px;
+  }
+  .map-param-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px;
+  }
+  .map-axis-block {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 12px; padding: 14px;
+  }
+  .map-axis-label {
+    font-size: 10px; font-weight: 700; color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 10px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .axis-badge {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 18px; height: 18px; border-radius: 5px; font-size: 10px;
+    font-weight: 700; color: #fff;
+  }
+  .axis-badge.x { background: var(--accent); }
+  .axis-badge.y { background: var(--accent2); }
+  .map-axis-block select {
+    width:100%; background:var(--surface); border:1px solid var(--border);
+    border-radius:8px; padding:7px 10px; color:var(--text);
+    font-family:inherit; font-size:12px; outline:none;
+    transition:border-color 0.2s; cursor:pointer; margin-bottom: 10px;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236170a0' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 10px center;
+  }
+  .map-axis-block select:focus { border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-glow); }
+  .map-range-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+  .map-range-item label {
+    font-size: 9px; font-weight:600; color:var(--text-muted);
+    text-transform:uppercase; letter-spacing:0.06em; display:block; margin-bottom:4px;
+  }
+  .map-range-item input {
+    width:100%; background:var(--surface); border:1px solid var(--border);
+    border-radius:6px; padding:6px 8px; color:var(--text);
+    font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:500;
+    outline:none; text-align:center; transition:border-color 0.2s;
+  }
+  .map-range-item input:focus { border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-glow); background:#fff; }
+
+  .map-charts-area { margin-top: 20px; display: flex; flex-direction: column; gap: 14px; }
+  .map-card {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 14px; overflow: hidden;
+  }
+  .map-card-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 14px; background: var(--surface); border-bottom: 1px solid var(--border);
+  }
+  .map-card-title { font-size: 12px; font-weight: 600; color: var(--text); }
+  .map-card-subtitle { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+  .map-canvas-wrap { padding: 16px; position: relative; }
+  canvas.map-cvs { width: 100% !important; display: block; }
+
+  /* Map modal */
+  .map-modal-box {
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:20px; width:100%; max-width:820px;
+    box-shadow:0 24px 64px rgba(0,0,0,0.18);
+    overflow:hidden; animation:modalIn 0.28s cubic-bezier(0.4,0,0.2,1);
+    max-height: 90vh; display: flex; flex-direction: column;
+  }
+  .map-modal-body { padding: 22px; overflow-y: auto; flex: 1; }
+  canvas#mapModalCanvas { width: 100% !important; display: block; }
 </style>
 </head>
 <body>
@@ -490,6 +561,64 @@
             <div class="chart-list" id="chartList"></div>
           </div>
         </div>
+
+        <!-- ── 2D Map Sweep Section ── -->
+        <div class="map-sweep-section">
+          <div class="sweep-header">
+            <div class="sweep-title-block">
+              <div class="sweep-icon">🗺️</div>
+              <div>
+                <div class="sweep-label">双参数扫描 Map 图</div>
+                <div class="sweep-sublabel">X/Y 为两个输入参数，颜色深浅代表孔径 D</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="map-param-grid">
+            <!-- X axis -->
+            <div class="map-axis-block">
+              <div class="map-axis-label"><span class="axis-badge x">X</span> 横轴参数</div>
+              <select id="mapParamX">
+                <option value="q">Q_hyd — 流量</option>
+                <option value="pf" selected>燃油压力</option>
+                <option value="pb">背压</option>
+                <option value="n">孔数 NSP</option>
+                <option value="rho">ρ — 燃油密度</option>
+                <option value="mu">µ — 流量系数</option>
+              </select>
+              <div class="map-range-row">
+                <div class="map-range-item"><label>起始</label><input type="number" id="mapXFrom" value="50"></div>
+                <div class="map-range-item"><label>终止</label><input type="number" id="mapXTo" value="200"></div>
+                <div class="map-range-item"><label>步长</label><input type="number" id="mapXStep" value="15" min="0.0001"></div>
+              </div>
+            </div>
+            <!-- Y axis -->
+            <div class="map-axis-block">
+              <div class="map-axis-label"><span class="axis-badge y">Y</span> 纵轴参数</div>
+              <select id="mapParamY">
+                <option value="q">Q_hyd — 流量</option>
+                <option value="pf">燃油压力</option>
+                <option value="pb">背压</option>
+                <option value="n">孔数 NSP</option>
+                <option value="rho">ρ — 燃油密度</option>
+                <option value="mu" selected>µ — 流量系数</option>
+              </select>
+              <div class="map-range-row">
+                <div class="map-range-item"><label>起始</label><input type="number" id="mapYFrom" value="0.6"></div>
+                <div class="map-range-item"><label>终止</label><input type="number" id="mapYTo" value="1.0"></div>
+                <div class="map-range-item"><label>步长</label><input type="number" id="mapYStep" value="0.05" min="0.0001"></div>
+              </div>
+            </div>
+          </div>
+
+          <button class="btn-sweep" onclick="runMapSweep()">🗺 生成 Map 图</button>
+
+          <div id="mapChartsArea" style="display:none">
+            <div class="section-title" style="margin-top:20px">Map 图历史</div>
+            <div class="map-charts-area" id="mapChartList"></div>
+          </div>
+        </div>
+
         </div>
 
       <div class="panel">
@@ -562,17 +691,33 @@
 </div>
 
 <div class="modal-overlay" id="imgPreviewModal">
-  <div class="modal-box">
+  <div class="modal-box" style="max-width:820px">
     <div class="modal-header">
-      <div class="modal-title" id="previewModalTitle">🖼 查看图表大图</div>
+      <div class="modal-title" id="previewModalTitle">🖼 矢量图预览</div>
       <button class="btn-close" onclick="closePreviewModal()">×</button>
     </div>
-    <div class="export-tip">💡 提示：电脑端用户请【右键图片 -> 图片另存为】；手机端用户请【长按图片】保存到相册</div>
-    <div class="modal-img-wrap">
-      <img id="previewImg" src="" alt="图表生成中...">
-    </div>
+    <div class="export-tip">💡 点击"下载 SVG"保存矢量图，可用 Inkscape / Adobe Illustrator / 浏览器直接打开</div>
+    <div class="modal-img-wrap" id="svgPreviewWrap" style="background:#f8faff;"></div>
     <div class="modal-footer">
       <button class="btn-secondary" onclick="closePreviewModal()">关闭</button>
+      <button class="btn-primary" id="svgDownloadBtn" onclick="downloadCurrentSVG()">⬇ 下载 SVG</button>
+    </div>
+  </div>
+</div>
+
+<!-- Map detail modal -->
+<div class="modal-overlay" id="mapModal">
+  <div class="map-modal-box">
+    <div class="modal-header">
+      <div class="modal-title" id="mapModalTitle">🗺 Map 图详情</div>
+      <button class="btn-close" onclick="closeMapModal()">×</button>
+    </div>
+    <div class="map-modal-body">
+      <canvas id="mapModalCanvas" height="500"></canvas>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeMapModal()">关闭</button>
+      <button class="btn-primary" onclick="saveMapChart()">⬇ 导出 SVG</button>
     </div>
   </div>
 </div>
@@ -676,8 +821,9 @@ function runSweep() {
   }
   const base = getBaseParams();
   const xs = [], ys = [];
-  for (let x = from; x <= to + 1e-9; x += step) {
-    x = Math.round(x * 1e8) / 1e8;
+  const count = Math.floor((to - from) / step + 1e-9) + 1;
+  for (let i = 0; i < count; i++) {
+    const x = Math.round((from + i * step) * 1e8) / 1e8;
     const p = Object.assign({}, base);
     p[param] = x;
     const d = computeD(p.q, p.pf, p.pb, p.n, p.rho, p.mu);
@@ -803,75 +949,305 @@ function deleteChart(idx) {
   if (chartStore.length === 0) document.getElementById('chartsArea').style.display = 'none';
 }
 
-function exportWithParamLegend(sourceCanvas, paramRows, accentColor, titleText) {
-  const dpr = 2; 
-  const W = sourceCanvas.width;
+// ── SVG export helpers ──
+let _currentSVGContent = '';
+let _currentSVGFilename = 'chart.svg';
 
-  const PAD = 16 * dpr;
-  const FONT_TITLE = 'bold ' + (11 * dpr) + 'px Inter, system-ui, sans-serif';
-  const FONT_ITEM  = (11 * dpr) + 'px "JetBrains Mono", monospace';
-  const COLS = 2; 
-  const ITEM_H = 20 * dpr;
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function buildLegendSVG(paramRows, accentColor, W) {
+  const PAD = 20, ITEM_H = 20, COLS = 2;
   const rows = Math.ceil(paramRows.length / COLS);
-  const legendH = PAD + (13 * dpr) + 6 * dpr + rows * ITEM_H + PAD;
-
-  const offscreen = document.createElement('canvas');
-  offscreen.width  = W;
-  offscreen.height = legendH + sourceCanvas.height;
-  const c = offscreen.getContext('2d');
-
-  c.fillStyle = '#ffffff';
-  c.fillRect(0, 0, offscreen.width, offscreen.height);
-
-  c.fillStyle = '#f8faff';
-  c.fillRect(0, 0, W, legendH);
-
-  c.strokeStyle = '#dde3f0';
-  c.lineWidth = 1 * dpr;
-  c.beginPath(); c.moveTo(0, legendH - 1); c.lineTo(W, legendH - 1); c.stroke();
-
-  c.fillStyle = accentColor || '#2563eb';
-  c.fillRect(0, 0, 4 * dpr, legendH);
-
-  c.font = FONT_TITLE;
-  c.fillStyle = '#6170a0';
-  c.fillText('参数配置清单', PAD + 4 * dpr, PAD + 11 * dpr);
-
+  const legendH = PAD + 16 + 8 + rows * ITEM_H + PAD;
   const colW = Math.floor((W - 2 * PAD) / COLS);
+  let s = '';
+  s += `<rect x="0" y="0" width="${W}" height="${legendH}" fill="#f8faff"/>`;
+  s += `<line x1="0" y1="${legendH-1}" x2="${W}" y2="${legendH-1}" stroke="#dde3f0" stroke-width="1"/>`;
+  s += `<rect x="0" y="0" width="4" height="${legendH}" fill="${accentColor||'#2563eb'}"/>`;
+  s += `<text x="${PAD+6}" y="${PAD+12}" font-family="Inter,system-ui,sans-serif" font-size="11" font-weight="700" fill="#6170a0">参数配置清单</text>`;
   paramRows.forEach((row, i) => {
-    const col = i % COLS;
-    const rowNum = Math.floor(i / COLS);
-    const x = PAD + 4 * dpr + col * colW;
-    const y = PAD + 13 * dpr + 6 * dpr + rowNum * ITEM_H + 13 * dpr;
+    const col = i % COLS, rowNum = Math.floor(i / COLS);
+    const x = PAD + 6 + col * colW;
+    const y = PAD + 16 + 8 + rowNum * ITEM_H + 13;
+    const color = row.isSweep ? (accentColor || '#2563eb') : '#9aa0c0';
+    const valColor = row.isSweep ? (accentColor || '#2563eb') : '#1a2033';
+    // approximate label char width ~6.5px at 10px bold
+    const approxLabelW = (row.label + ':').length * 6.5;
+    s += `<text x="${x}" y="${y}" font-family="Inter,system-ui,sans-serif" font-size="10" font-weight="700" fill="${color}">${esc(row.label)}:</text>`;
+    s += `<text x="${x + approxLabelW + 5}" y="${y}" font-family="'JetBrains Mono',monospace" font-size="10" fill="${valColor}">${esc(row.value)}</text>`;
+  });
+  return { svg: s, height: legendH };
+}
 
-    c.font = 'bold ' + (10 * dpr) + 'px Inter, system-ui, sans-serif';
-    c.fillStyle = row.isSweep ? (accentColor || '#2563eb') : '#9aa0c0';
-    const labelText = row.label + ':';
-    c.fillText(labelText, x, y);
+function showSVGPreview(svgContent, title, filename) {
+  _currentSVGContent = svgContent;
+  _currentSVGFilename = filename;
+  document.getElementById('previewModalTitle').textContent = title;
+  const wrap = document.getElementById('svgPreviewWrap');
+  wrap.innerHTML = svgContent;
+  const svgEl = wrap.querySelector('svg');
+  if (svgEl) { svgEl.style.width = '100%'; svgEl.style.height = 'auto'; }
+  document.getElementById('imgPreviewModal').classList.add('open');
+}
 
-    c.font = FONT_ITEM;
-    c.fillStyle = row.isSweep ? (accentColor || '#2563eb') : '#1a2033';
-    const lw = c.measureText(labelText).width;
-    c.fillText(row.value, x + lw + 6 * dpr, y);
+function downloadCurrentSVG() {
+  if (!_currentSVGContent) return;
+  const blob = new Blob([_currentSVGContent], { type: 'image/svg+xml;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = _currentSVGFilename; a.click();
+  URL.revokeObjectURL(url);
+}
+
+// Build SVG for a line chart from chartStore item
+function buildLineSVG(item, paramRows, accentColor, W, H) {
+  W = W || 700; H = H || 340;
+  const PAD_L = 60, PAD_R = 24, PAD_T = 24, PAD_B = 48;
+  const plotW = W - PAD_L - PAD_R, plotH = H - PAD_T - PAD_B;
+
+  const xs = item.xs, ys = item.ys;
+  const xMin = xs[0], xMax = xs[xs.length-1];
+  const yMin = Math.min(...ys), yMax = Math.max(...ys);
+  const yPad = (yMax - yMin) * 0.08 || 0.001;
+  const yLo = yMin - yPad, yHi = yMax + yPad;
+
+  function px(x) { return PAD_L + (x - xMin) / (xMax - xMin) * plotW; }
+  function py(y) { return PAD_T + plotH - (y - yLo) / (yHi - yLo) * plotH; }
+
+  const { svg: legendSVG, height: legendH } = buildLegendSVG(paramRows, accentColor, W);
+  const totalH = legendH + H;
+
+  let s = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${totalH}" viewBox="0 0 ${W} ${totalH}">`;
+  s += `<defs><style>text{font-family:Inter,system-ui,sans-serif}</style></defs>`;
+
+  // legend
+  s += `<g>${legendSVG}</g>`;
+
+  // chart area
+  const oy = legendH;
+  s += `<rect x="0" y="${oy}" width="${W}" height="${H}" fill="#ffffff"/>`;
+
+  // grid lines & X ticks
+  const xTickN = Math.min(xs.length, 8);
+  const xTickStep = Math.max(1, Math.floor(xs.length / xTickN));
+  for (let xi = 0; xi < xs.length; xi += xTickStep) {
+    const x = px(xs[xi]);
+    s += `<line x1="${x}" y1="${oy+PAD_T}" x2="${x}" y2="${oy+PAD_T+plotH}" stroke="#eef0f8" stroke-width="1"/>`;
+    s += `<text x="${x}" y="${oy+PAD_T+plotH+14}" font-size="10" fill="#6170a0" text-anchor="middle" font-family="'JetBrains Mono',monospace">${esc(xs[xi])}</text>`;
+  }
+  // Y ticks
+  const yTickN = 6;
+  for (let i = 0; i <= yTickN; i++) {
+    const val = yLo + (yHi - yLo) * i / yTickN;
+    const y = py(val);
+    s += `<line x1="${PAD_L}" y1="${oy+y}" x2="${PAD_L+plotW}" y2="${oy+y}" stroke="#eef0f8" stroke-width="1"/>`;
+    s += `<text x="${PAD_L-6}" y="${oy+y+4}" font-size="10" fill="#6170a0" text-anchor="end" font-family="'JetBrains Mono',monospace">${val.toFixed(4)}</text>`;
+  }
+
+  // fill area
+  let fillPath = `M${px(xs[0])},${oy+PAD_T+plotH}`;
+  xs.forEach((x,i) => { fillPath += ` L${px(x)},${oy+py(ys[i])}`; });
+  fillPath += ` L${px(xs[xs.length-1])},${oy+PAD_T+plotH} Z`;
+  s += `<path d="${fillPath}" fill="${accentColor}18"/>`;
+
+  // line
+  let linePath = xs.map((x,i) => (i===0?'M':'L') + px(x).toFixed(2) + ',' + (oy+py(ys[i])).toFixed(2)).join(' ');
+  s += `<path d="${linePath}" fill="none" stroke="${accentColor}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
+
+  // points
+  if (xs.length <= 60) {
+    xs.forEach((x,i) => {
+      s += `<circle cx="${px(x).toFixed(2)}" cy="${(oy+py(ys[i])).toFixed(2)}" r="3" fill="${accentColor}" stroke="#fff" stroke-width="1.5"/>`;
+    });
+  }
+
+  // axis labels
+  s += `<text x="${PAD_L+plotW/2}" y="${oy+H-6}" font-size="11" fill="#6170a0" text-anchor="middle">${esc(item.label)}</text>`;
+  s += `<text x="12" y="${oy+PAD_T+plotH/2}" font-size="11" fill="#6170a0" text-anchor="middle" transform="rotate(-90,12,${oy+PAD_T+plotH/2})">D (mm)</text>`;
+
+  // border
+  s += `<rect x="${PAD_L}" y="${oy+PAD_T}" width="${plotW}" height="${plotH}" fill="none" stroke="#dde3f0" stroke-width="1"/>`;
+
+  s += '</svg>';
+  return s;
+}
+
+// Build SVG for merged line chart
+function buildMergedLineSVG(selItems, paramRows, W, H) {
+  W = W || 700; H = H || 360;
+  const PAD_L = 60, PAD_R = 24, PAD_T = 40, PAD_B = 52;
+  const plotW = W - PAD_L - PAD_R, plotH = H - PAD_T - PAD_B;
+
+  const allXs = selItems.flatMap(it => it.xs), allYs = selItems.flatMap(it => it.ys);
+  const xMin = Math.min(...allXs), xMax = Math.max(...allXs);
+  const yMin = Math.min(...allYs), yMax = Math.max(...allYs);
+  const yPad = (yMax - yMin) * 0.08 || 0.001;
+  const yLo = yMin - yPad, yHi = yMax + yPad;
+
+  function px(x) { return PAD_L + (x - xMin) / (xMax - xMin) * plotW; }
+  function py(y) { return PAD_T + plotH - (y - yLo) / (yHi - yLo) * plotH; }
+
+  const { svg: legendSVG, height: legendH } = buildLegendSVG(paramRows, '#2563eb', W);
+  const totalH = legendH + H;
+
+  let s = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${totalH}" viewBox="0 0 ${W} ${totalH}">`;
+  s += `<rect x="0" y="0" width="${W}" height="${totalH}" fill="#ffffff"/>`;
+  s += `<g>${legendSVG}</g>`;
+  const oy = legendH;
+
+  // grid
+  const yTickN = 6;
+  for (let i = 0; i <= yTickN; i++) {
+    const val = yLo + (yHi - yLo) * i / yTickN;
+    const y = py(val);
+    s += `<line x1="${PAD_L}" y1="${oy+y}" x2="${PAD_L+plotW}" y2="${oy+y}" stroke="#eef0f8" stroke-width="1"/>`;
+    s += `<text x="${PAD_L-6}" y="${oy+y+4}" font-size="10" fill="#6170a0" text-anchor="end" font-family="'JetBrains Mono',monospace">${val.toFixed(4)}</text>`;
+  }
+  const xTickN = 8;
+  for (let i = 0; i <= xTickN; i++) {
+    const val = xMin + (xMax - xMin) * i / xTickN;
+    const x = px(val);
+    s += `<line x1="${x}" y1="${oy+PAD_T}" x2="${x}" y2="${oy+PAD_T+plotH}" stroke="#eef0f8" stroke-width="1"/>`;
+    s += `<text x="${x}" y="${oy+PAD_T+plotH+14}" font-size="10" fill="#6170a0" text-anchor="middle" font-family="'JetBrains Mono',monospace">${val.toFixed(2)}</text>`;
+  }
+
+  // each series
+  const legendBoxY = oy + 6;
+  selItems.forEach((item, si) => {
+    let linePath = item.xs.map((x,i) => (i===0?'M':'L') + px(x).toFixed(2)+','+(oy+py(item.ys[i])).toFixed(2)).join(' ');
+    s += `<path d="${linePath}" fill="none" stroke="${item.color}" stroke-width="2" stroke-linejoin="round"/>`;
+    if (item.xs.length <= 60) {
+      item.xs.forEach((x,i) => {
+        s += `<circle cx="${px(x).toFixed(2)}" cy="${(oy+py(item.ys[i])).toFixed(2)}" r="3" fill="${item.color}" stroke="#fff" stroke-width="1.5"/>`;
+      });
+    }
+    // legend entry
+    const lx = PAD_L + si * 180;
+    s += `<rect x="${lx}" y="${legendBoxY}" width="12" height="3" rx="1" fill="${item.color}"/>`;
+    s += `<text x="${lx+16}" y="${legendBoxY+9}" font-size="10" fill="#1a2033">${esc('D vs '+item.label.split(' ')[0])}</text>`;
   });
 
-  c.drawImage(sourceCanvas, 0, legendH);
+  s += `<rect x="${PAD_L}" y="${oy+PAD_T}" width="${plotW}" height="${plotH}" fill="none" stroke="#dde3f0" stroke-width="1"/>`;
+  s += `<text x="${PAD_L+plotW/2}" y="${oy+H-6}" font-size="11" fill="#6170a0" text-anchor="middle">参数值</text>`;
+  s += `<text x="12" y="${oy+PAD_T+plotH/2}" font-size="11" fill="#6170a0" text-anchor="middle" transform="rotate(-90,12,${oy+PAD_T+plotH/2})">D (mm)</text>`;
+  s += '</svg>';
+  return s;
+}
 
-  const finalC = document.createElement('canvas');
-  finalC.width  = offscreen.width  / dpr;
-  finalC.height = offscreen.height / dpr;
-  const fc = finalC.getContext('2d');
-  fc.drawImage(offscreen, 0, 0, finalC.width, finalC.height);
+// Build SVG for map heatmap
+function buildMapSVG(item, W, H) {
+  W = W || 720; H = H || 500;
+  const PAD_L = 68, PAD_R = 100, PAD_T = 28, PAD_B = 52;
+  const plotW = W - PAD_L - PAD_R, plotH = H - PAD_T - PAD_B;
 
-  try {
-    const dataURL = finalC.toDataURL('image/png', 1);
-    document.getElementById('previewModalTitle').textContent = titleText;
-    document.getElementById('previewImg').src = dataURL;
-    document.getElementById('imgPreviewModal').classList.add('open');
-  } catch(err) {
-    alert('生成图片失败，建议在常规浏览器环境（如 Chrome / Edge）中直接打开此网页。');
-    console.error(err);
+  const nx = item.xs.length, ny = item.ys.length;
+  const cellW = plotW / nx, cellH = plotH / ny;
+
+  // param legend
+  const paramRows = [
+    { label: 'X 轴', value: PARAM_LABELS[item.paramX].split(' ')[0] + '  ' + item.xs[0] + ' → ' + item.xs[item.xs.length-1], isSweep: true },
+    { label: 'Y 轴', value: PARAM_LABELS[item.paramY].split(' ')[0] + '  ' + item.ys[0] + ' → ' + item.ys[item.ys.length-1], isSweep: true },
+    ...Object.entries(item.base)
+      .filter(([k]) => k !== item.paramX && k !== item.paramY)
+      .map(([k,v]) => ({ label: PARAM_LABELS[k].split(' ')[0], value: String(v), isSweep: false }))
+  ];
+  const { svg: legendSVG, height: legendH } = buildLegendSVG(paramRows, '#7c3aed', W);
+  const totalH = legendH + H;
+
+  // unique gradient id per export
+  const gid = 'cbg' + Date.now();
+
+  let s = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${totalH}" viewBox="0 0 ${W} ${totalH}">`;
+  s += `<defs>`;
+  s += `<linearGradient id="${gid}" x1="0" y1="1" x2="0" y2="0">`;
+  s += `<stop offset="0%"   stop-color="#2563eb"/>`;
+  s += `<stop offset="25%"  stop-color="#06b6d4"/>`;
+  s += `<stop offset="50%"  stop-color="#10b981"/>`;
+  s += `<stop offset="75%"  stop-color="#fbbf24"/>`;
+  s += `<stop offset="100%" stop-color="#dc2626"/>`;
+  s += `</linearGradient>`;
+  s += `<clipPath id="plotclip"><rect x="${PAD_L}" y="${legendH+PAD_T}" width="${plotW}" height="${plotH}"/></clipPath>`;
+  s += `</defs>`;
+  s += `<rect x="0" y="0" width="${W}" height="${totalH}" fill="#ffffff"/>`;
+  s += `<g>${legendSVG}</g>`;
+
+  const oy = legendH;
+
+  // heatmap cells
+  for (let yi = 0; yi < ny; yi++) {
+    for (let xi = 0; xi < nx; xi++) {
+      const v = item.grid[yi][xi];
+      let fill = '#e5e7eb';
+      if (v !== null) {
+        const t = item.dMax > item.dMin ? (v - item.dMin) / (item.dMax - item.dMin) : 0.5;
+        const [r,g,b] = mapColor(t);
+        fill = `rgb(${r},${g},${b})`;
+      }
+      const cx = PAD_L + xi * cellW;
+      const cy = oy + PAD_T + (ny - 1 - yi) * cellH;
+      s += `<rect x="${cx.toFixed(2)}" y="${cy.toFixed(2)}" width="${(cellW+0.5).toFixed(2)}" height="${(cellH+0.5).toFixed(2)}" fill="${fill}"/>`;
+    }
   }
+
+  // Z value labels
+  const labelFontSize = Math.min(cellW * 0.38, cellH * 0.42, 11);
+  if (labelFontSize >= 5) {
+    for (let yi = 0; yi < ny; yi++) {
+      for (let xi = 0; xi < nx; xi++) {
+        const v = item.grid[yi][xi];
+        if (v === null) continue;
+        const t = item.dMax > item.dMin ? (v - item.dMin) / (item.dMax - item.dMin) : 0.5;
+        const [r,g,b] = mapColor(t);
+        const luminance = (0.299*r + 0.587*g + 0.114*b) / 255;
+        const textColor = luminance > 0.55 ? 'rgba(0,0,0,0.82)' : 'rgba(255,255,255,0.92)';
+        const decimals = v < 1 ? 4 : v < 10 ? 3 : 2;
+        const cx = PAD_L + (xi + 0.5) * cellW;
+        const cy = oy + PAD_T + (ny - 1 - yi) * cellH + cellH * 0.5;
+        s += `<text x="${cx.toFixed(2)}" y="${(cy + labelFontSize*0.36).toFixed(2)}" ` +
+             `font-family="'JetBrains Mono',monospace" font-size="${labelFontSize.toFixed(1)}" font-weight="700" ` +
+             `fill="${textColor}" text-anchor="middle" clip-path="url(#plotclip)">${v.toFixed(decimals)}</text>`;
+      }
+    }
+  }
+
+  // X axis ticks
+  const xTickStep = Math.max(1, Math.floor(nx / Math.min(nx, 10)));
+  for (let xi = 0; xi < nx; xi += xTickStep) {
+    const x = PAD_L + (xi + 0.5) * cellW;
+    s += `<line x1="${x.toFixed(1)}" y1="${oy+PAD_T}" x2="${x.toFixed(1)}" y2="${oy+PAD_T+plotH}" stroke="#dde3f0" stroke-width="0.5"/>`;
+    s += `<text x="${x.toFixed(1)}" y="${oy+PAD_T+plotH+14}" font-family="'JetBrains Mono',monospace" font-size="10" fill="#6170a0" text-anchor="middle">${esc(item.xs[xi])}</text>`;
+  }
+  // Y axis ticks
+  const yTickStep = Math.max(1, Math.floor(ny / Math.min(ny, 10)));
+  for (let yi = 0; yi < ny; yi += yTickStep) {
+    const y = oy + PAD_T + (ny - 1 - yi) * cellH + cellH * 0.5;
+    s += `<line x1="${PAD_L}" y1="${y.toFixed(1)}" x2="${(PAD_L+plotW).toFixed(1)}" y2="${y.toFixed(1)}" stroke="#dde3f0" stroke-width="0.5"/>`;
+    s += `<text x="${(PAD_L-5).toFixed(1)}" y="${(y+4).toFixed(1)}" font-family="'JetBrains Mono',monospace" font-size="10" fill="#6170a0" text-anchor="end">${esc(item.ys[yi])}</text>`;
+  }
+
+  // Axis labels
+  s += `<text x="${(PAD_L+plotW/2).toFixed(1)}" y="${oy+H-6}" font-family="Inter,system-ui,sans-serif" font-size="11" fill="#1a2033" text-anchor="middle">${esc(PARAM_LABELS[item.paramX])}</text>`;
+  s += `<text x="12" y="${(oy+PAD_T+plotH/2).toFixed(1)}" font-family="Inter,system-ui,sans-serif" font-size="11" fill="#1a2033" text-anchor="middle" transform="rotate(-90,12,${(oy+PAD_T+plotH/2).toFixed(1)})">${esc(PARAM_LABELS[item.paramY])}</text>`;
+
+  // Colorbar
+  const cbX = PAD_L + plotW + 12, cbW = 14, cbH = plotH, cbY = oy + PAD_T;
+  s += `<rect x="${cbX}" y="${cbY}" width="${cbW}" height="${cbH}" fill="url(#${gid})" stroke="#dde3f0" stroke-width="0.5"/>`;
+  const cbTickN = 8;
+  for (let i = 0; i <= cbTickN; i++) {
+    const t = i / cbTickN;
+    const val = item.dMin + t * (item.dMax - item.dMin);
+    const y = cbY + cbH * (1 - t);
+    s += `<line x1="${cbX+cbW}" y1="${y.toFixed(1)}" x2="${cbX+cbW+4}" y2="${y.toFixed(1)}" stroke="#9ca3af" stroke-width="1"/>`;
+    s += `<text x="${cbX+cbW+7}" y="${(y+4).toFixed(1)}" font-family="'JetBrains Mono',monospace" font-size="10" fill="#6170a0">${val.toFixed(4)}</text>`;
+  }
+  s += `<text x="${W-4}" y="${(cbY+cbH/2).toFixed(1)}" font-family="Inter,system-ui,sans-serif" font-size="11" fill="#1a2033" text-anchor="middle" transform="rotate(-90,${W-4},${(cbY+cbH/2).toFixed(1)})">D (mm)</text>`;
+
+  // border
+  s += `<rect x="${PAD_L}" y="${oy+PAD_T}" width="${plotW}" height="${plotH}" fill="none" stroke="#dde3f0" stroke-width="1"/>`;
+  s += '</svg>';
+  return s;
 }
 
 function buildParamRows(item) {
@@ -888,10 +1264,10 @@ function buildParamRows(item) {
 
 function saveChart(idx) {
   const item = chartStore[idx];
-  if (!item.chartInstance) return;
   const rows = buildParamRows(item);
-  exportWithParamLegend(item.chartInstance.canvas, rows, item.color,
-    '📉 单图导出: D vs ' + item.label.split(' ')[0]);
+  const svg = buildLineSVG(item, rows, item.color);
+  const label = item.label.split(' ')[0];
+  showSVGPreview(svg, '📉 矢量图: D vs ' + label, 'D_vs_' + label + '.svg');
 }
 
 function updateMergeBar() {
@@ -969,21 +1345,22 @@ function closeMergeModal() {
 }
 
 function saveMergedChart() {
-  if (!mergeChartInstance) return;
   const sel = chartStore.filter(c => c.selected);
+  if (sel.length < 2) return;
   const rows = sel.map((item, i) => ({
     label: '曲线' + (i+1) + ' 扫描: ' + PARAM_LABELS[item.param].split(' (')[0],
     value: item.xs[0] + '→' + item.xs[item.xs.length-1] + ' (' + item.fixedDesc.substring(0, 22) + '...)',
     isSweep: true
   }));
-  
-  closeMergeModal(); 
-  exportWithParamLegend(mergeChartInstance.canvas, rows, '#2563eb', '📊 多图对比合并导出');
+  const svg = buildMergedLineSVG(sel, rows);
+  closeMergeModal();
+  showSVGPreview(svg, '📊 多图对比矢量图', 'merged_chart.svg');
 }
 
 function closePreviewModal() {
   document.getElementById('imgPreviewModal').classList.remove('open');
-  document.getElementById('previewImg').src = ""; 
+  document.getElementById('svgPreviewWrap').innerHTML = '';
+  _currentSVGContent = '';
 }
 
 document.getElementById('mergeModal').addEventListener('click', function(e) {
@@ -992,6 +1369,340 @@ document.getElementById('mergeModal').addEventListener('click', function(e) {
 document.getElementById('imgPreviewModal').addEventListener('click', function(e) {
   if (e.target === this) closePreviewModal();
 });
+document.getElementById('mapModal').addEventListener('click', function(e) {
+  if (e.target === this) closeMapModal();
+});
+
+// ── Map Sweep ──
+let mapStore = [];
+let _currentMapModal = null; // store item ref for export
+
+// Colormap: blue(low) → cyan → green → yellow → red(high)  (scientific heatmap)
+function mapColor(t) {
+  // t in [0,1]
+  const stops = [
+    [0.00, [37,  99, 235]],  // blue
+    [0.25, [6,  182, 212]],  // cyan
+    [0.50, [16, 185, 129]],  // green
+    [0.75, [251,191,  36]],  // yellow
+    [1.00, [220,  38,  38]]  // red
+  ];
+  let lo = stops[0], hi = stops[stops.length-1];
+  for (let i = 0; i < stops.length-1; i++) {
+    if (t >= stops[i][0] && t <= stops[i+1][0]) { lo = stops[i]; hi = stops[i+1]; break; }
+  }
+  const f = (t - lo[0]) / (hi[0] - lo[0]);
+  const r = Math.round(lo[1][0] + f*(hi[1][0]-lo[1][0]));
+  const g = Math.round(lo[1][1] + f*(hi[1][1]-lo[1][1]));
+  const b = Math.round(lo[1][2] + f*(hi[1][2]-lo[1][2]));
+  return [r,g,b];
+}
+
+function buildSweepAxis(from, to, step) {
+  const count = Math.floor((to - from) / step + 1e-9) + 1;
+  const arr = [];
+  for (let i = 0; i < count; i++) arr.push(Math.round((from + i * step) * 1e8) / 1e8);
+  return arr;
+}
+
+function runMapSweep() {
+  const paramX = document.getElementById('mapParamX').value;
+  const paramY = document.getElementById('mapParamY').value;
+  if (paramX === paramY) { alert('X 轴与 Y 轴参数不能相同'); return; }
+
+  const xFrom = parseFloat(document.getElementById('mapXFrom').value);
+  const xTo   = parseFloat(document.getElementById('mapXTo').value);
+  const xStep = Math.abs(parseFloat(document.getElementById('mapXStep').value));
+  const yFrom = parseFloat(document.getElementById('mapYFrom').value);
+  const yTo   = parseFloat(document.getElementById('mapYTo').value);
+  const yStep = Math.abs(parseFloat(document.getElementById('mapYStep').value));
+
+  if (!isFinite(xFrom)||!isFinite(xTo)||!isFinite(xStep)||xStep<=0||xFrom>=xTo) {
+    alert('请检查 X 轴范围与步长设置（起始 < 终止，步长 > 0）'); return;
+  }
+  if (!isFinite(yFrom)||!isFinite(yTo)||!isFinite(yStep)||yStep<=0||yFrom>=yTo) {
+    alert('请检查 Y 轴范围与步长设置（起始 < 终止，步长 > 0）'); return;
+  }
+
+  const base = getBaseParams();
+  const xs = buildSweepAxis(xFrom, xTo, xStep);
+  const ys = buildSweepAxis(yFrom, yTo, yStep);
+
+  // grid[yi][xi] = D value or null
+  const grid = ys.map(yv =>
+    xs.map(xv => {
+      const p = Object.assign({}, base);
+      p[paramX] = xv; p[paramY] = yv;
+      const d = computeD(p.q, p.pf, p.pb, p.n, p.rho, p.mu);
+      return (d != null && isFinite(d)) ? +d.toFixed(6) : null;
+    })
+  );
+
+  // find min/max
+  let dMin = Infinity, dMax = -Infinity;
+  grid.forEach(row => row.forEach(v => { if (v !== null) { dMin = Math.min(dMin, v); dMax = Math.max(dMax, v); } }));
+  if (!isFinite(dMin)) { alert('扫描范围内无有效计算结果，请检查参数设置'); return; }
+
+  const fixedDesc = Object.entries(base)
+    .filter(([k]) => k !== paramX && k !== paramY)
+    .map(([k,v]) => PARAM_LABELS[k].split(' ')[0] + '=' + v)
+    .join(', ');
+
+  const id = Date.now();
+  mapStore.push({ id, paramX, paramY, xs, ys, grid, dMin, dMax, base: Object.assign({},base), fixedDesc });
+
+  renderMapList();
+  document.getElementById('mapChartsArea').style.display = 'block';
+}
+
+function renderMapList() {
+  const list = document.getElementById('mapChartList');
+  list.innerHTML = '';
+  mapStore.forEach((item, idx) => {
+    const card = document.createElement('div');
+    card.className = 'map-card';
+    const title = 'D  [' + PARAM_LABELS[item.paramX].split(' ')[0] + ' × ' + PARAM_LABELS[item.paramY].split(' ')[0] + ']';
+    card.innerHTML =
+      '<div class="map-card-header">' +
+        '<div><div class="map-card-title">' + title + '</div>' +
+             '<div class="map-card-subtitle">' + item.fixedDesc + '</div></div>' +
+        '<div class="chart-card-actions">' +
+          '<button class="btn-icon" title="放大查看" onclick="openMapModal(' + idx + ')">🔍</button>' +
+          '<button class="btn-icon" title="删除" onclick="deleteMapChart(' + idx + ')">🗑</button>' +
+        '</div>' +
+      '</div>' +
+      '<div class="map-canvas-wrap"><canvas class="map-cvs" id="mapcvs-' + item.id + '" height="240"></canvas></div>';
+    list.appendChild(card);
+    // defer draw so canvas is in DOM
+    requestAnimationFrame(() => drawHeatmap(document.getElementById('mapcvs-' + item.id), item, false));
+  });
+}
+
+function deleteMapChart(idx) {
+  mapStore.splice(idx, 1);
+  renderMapList();
+  if (mapStore.length === 0) document.getElementById('mapChartsArea').style.display = 'none';
+}
+
+// Core heatmap renderer (Canvas 2D)
+function drawHeatmap(canvas, item, large) {
+  const dpr = window.devicePixelRatio || 1;
+  const W0 = canvas.offsetWidth || 540;
+  const H0 = large ? 460 : 220;
+
+  const PAD_L = large ? 64 : 52;
+  const PAD_R = large ? 100 : 86;  // colorbar
+  const PAD_T = large ? 28 : 20;
+  const PAD_B = large ? 48 : 36;
+
+  canvas.width  = W0 * dpr;
+  canvas.height = H0 * dpr;
+  canvas.style.height = H0 + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+
+  const plotW = W0 - PAD_L - PAD_R;
+  const plotH = H0 - PAD_T - PAD_B;
+
+  // background
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, W0, H0);
+
+  const nx = item.xs.length, ny = item.ys.length;
+  const cellW = plotW / nx, cellH = plotH / ny;
+
+  // draw cells (Y: ys[0] at bottom → flip)
+  for (let yi = 0; yi < ny; yi++) {
+    for (let xi = 0; xi < nx; xi++) {
+      const v = item.grid[yi][xi];
+      if (v === null) { ctx.fillStyle = '#e5e7eb'; }
+      else {
+        const t = item.dMax > item.dMin ? (v - item.dMin) / (item.dMax - item.dMin) : 0.5;
+        const [r,g,b] = mapColor(t);
+        ctx.fillStyle = 'rgb('+r+','+g+','+b+')';
+      }
+      const px = PAD_L + xi * cellW;
+      const py = PAD_T + (ny - 1 - yi) * cellH;  // flip Y so ys[0] at bottom
+      ctx.fillRect(px, py, cellW + 0.5, cellH + 0.5);
+    }
+  }
+
+  // border around plot
+  ctx.strokeStyle = '#dde3f0'; ctx.lineWidth = 1;
+  ctx.strokeRect(PAD_L, PAD_T, plotW, plotH);
+
+  const FONT_TICK  = (large ? 10 : 9) + 'px "JetBrains Mono", monospace';
+  const FONT_LABEL = (large ? 11 : 10) + 'px Inter, system-ui, sans-serif';
+  ctx.fillStyle = '#6170a0';
+
+  // X axis ticks & labels
+  const xTickN = Math.min(nx, large ? 10 : 7);
+  const xTickStep = Math.max(1, Math.floor(nx / xTickN));
+  ctx.font = FONT_TICK; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  for (let xi = 0; xi < nx; xi += xTickStep) {
+    const px = PAD_L + (xi + 0.5) * cellW;
+    ctx.fillStyle = '#dde3f0'; ctx.fillRect(px, PAD_T, 1, plotH);
+    ctx.fillStyle = '#6170a0';
+    ctx.fillText(item.xs[xi], px, PAD_T + plotH + 4);
+  }
+
+  // Y axis ticks & labels
+  const yTickN = Math.min(ny, large ? 10 : 6);
+  const yTickStep = Math.max(1, Math.floor(ny / yTickN));
+  ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+  for (let yi = 0; yi < ny; yi += yTickStep) {
+    const py = PAD_T + (ny - 1 - yi) * cellH + cellH * 0.5;
+    ctx.fillStyle = '#dde3f0'; ctx.fillRect(PAD_L, py, plotW, 1);
+    ctx.fillStyle = '#6170a0'; ctx.font = FONT_TICK;
+    ctx.fillText(item.ys[yi], PAD_L - 5, py);
+  }
+
+  // Axis labels
+  ctx.font = FONT_LABEL; ctx.fillStyle = '#1a2033';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+  ctx.fillText(PARAM_LABELS[item.paramX], PAD_L + plotW / 2, H0 - 4);
+
+  ctx.save();
+  ctx.translate(12, PAD_T + plotH / 2);
+  ctx.rotate(-Math.PI / 2);
+  ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  ctx.fillText(PARAM_LABELS[item.paramY], 0, 0);
+  ctx.restore();
+
+  // Colorbar
+  const cbX = PAD_L + plotW + 12;
+  const cbW = large ? 14 : 12;
+  const cbH = plotH;
+  const cbY = PAD_T;
+  // gradient rect
+  const grad = ctx.createLinearGradient(0, cbY + cbH, 0, cbY);
+  const gradStops = [[0,'#2563eb'],[0.25,'#06b6d4'],[0.5,'#10b981'],[0.75,'#fbbf24'],[1,'#dc2626']];
+  gradStops.forEach(([pos,color]) => grad.addColorStop(pos, color));
+  ctx.fillStyle = grad;
+  ctx.fillRect(cbX, cbY, cbW, cbH);
+  ctx.strokeStyle = '#dde3f0'; ctx.lineWidth = 0.5;
+  ctx.strokeRect(cbX, cbY, cbW, cbH);
+
+  // colorbar ticks
+  const cbTickN = large ? 8 : 5;
+  ctx.font = FONT_TICK; ctx.fillStyle = '#6170a0'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  for (let i = 0; i <= cbTickN; i++) {
+    const t = i / cbTickN;
+    const val = item.dMin + t * (item.dMax - item.dMin);
+    const py = cbY + cbH * (1 - t);
+    ctx.fillStyle = '#9ca3af'; ctx.fillRect(cbX + cbW, py, 4, 1);
+    ctx.fillStyle = '#6170a0';
+    ctx.fillText(val.toFixed(4), cbX + cbW + 7, py);
+  }
+  // colorbar label
+  ctx.save();
+  ctx.translate(W0 - 4, PAD_T + cbH / 2);
+  ctx.rotate(-Math.PI / 2);
+  ctx.textAlign = 'center'; ctx.textBaseline = 'bottom'; ctx.font = FONT_LABEL;
+  ctx.fillStyle = '#1a2033'; ctx.fillText('D (mm)', 0, 0);
+  ctx.restore();
+
+  // Contour lines (iso-D lines) — simple threshold crossing per cell
+  if (item.dMax > item.dMin) {
+    const nContours = large ? 8 : 5;
+    ctx.save(); ctx.beginPath();
+    ctx.rect(PAD_L, PAD_T, plotW, plotH); ctx.clip();
+    for (let ci = 1; ci < nContours; ci++) {
+      const iso = item.dMin + ci * (item.dMax - item.dMin) / nContours;
+      ctx.strokeStyle = 'rgba(255,255,255,0.55)'; ctx.lineWidth = large ? 1.2 : 0.8;
+      ctx.setLineDash([3,3]);
+      // draw horizontal segments where grid crosses iso value
+      for (let yi = 0; yi < ny - 1; yi++) {
+        for (let xi = 0; xi < nx; xi++) {
+          const v0 = item.grid[yi][xi], v1 = item.grid[yi+1][xi];
+          if (v0 === null || v1 === null) continue;
+          if ((v0 - iso) * (v1 - iso) <= 0) {
+            const frac = (iso - v0) / (v1 - v0);
+            const px = PAD_L + (xi + 0.5) * cellW;
+            const py = PAD_T + (ny - 1 - yi - frac) * cellH;
+            ctx.beginPath(); ctx.moveTo(px - cellW*0.4, py); ctx.lineTo(px + cellW*0.4, py);
+            ctx.stroke();
+          }
+        }
+      }
+      for (let yi = 0; yi < ny; yi++) {
+        for (let xi = 0; xi < nx - 1; xi++) {
+          const v0 = item.grid[yi][xi], v1 = item.grid[yi][xi+1];
+          if (v0 === null || v1 === null) continue;
+          if ((v0 - iso) * (v1 - iso) <= 0) {
+            const frac = (iso - v0) / (v1 - v0);
+            const px = PAD_L + (xi + frac) * cellW;
+            const py = PAD_T + (ny - 1 - yi) * cellH + cellH * 0.5;
+            ctx.beginPath(); ctx.moveTo(px, py - cellH*0.4); ctx.lineTo(px, py + cellH*0.4);
+            ctx.stroke();
+          }
+        }
+      }
+    }
+    ctx.restore(); ctx.setLineDash([]);
+  }
+
+  // ── Z value labels at each grid intersection ──
+  // Decide font size based on cell dimensions; skip if cells are too small
+  const labelFontSize = Math.min(cellW * 0.38, cellH * 0.42, large ? 11 : 9);
+  if (labelFontSize >= (large ? 6 : 5)) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(PAD_L, PAD_T, plotW, plotH);
+    ctx.clip();
+    ctx.font = 'bold ' + labelFontSize.toFixed(1) + 'px "JetBrains Mono", monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    for (let yi = 0; yi < ny; yi++) {
+      for (let xi = 0; xi < nx; xi++) {
+        const v = item.grid[yi][xi];
+        if (v === null) continue;
+        const px = PAD_L + (xi + 0.5) * cellW;
+        const py = PAD_T + (ny - 1 - yi) * cellH + cellH * 0.5;
+        // pick text color based on background brightness
+        const t = item.dMax > item.dMin ? (v - item.dMin) / (item.dMax - item.dMin) : 0.5;
+        const [r, g, b] = mapColor(t);
+        const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+        const textColor = luminance > 0.55 ? 'rgba(0,0,0,0.82)' : 'rgba(255,255,255,0.92)';
+        // determine decimal places: more decimals for small values
+        const decimals = v < 1 ? 4 : v < 10 ? 3 : 2;
+        const label = v.toFixed(decimals);
+        // thin shadow for contrast
+        ctx.shadowColor = luminance > 0.55 ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)';
+        ctx.shadowBlur = 2;
+        ctx.fillStyle = textColor;
+        ctx.fillText(label, px, py);
+      }
+    }
+    ctx.shadowBlur = 0;
+    ctx.restore();
+  }
+}
+
+function openMapModal(idx) {
+  _currentMapModal = mapStore[idx];
+  const item = _currentMapModal;
+  document.getElementById('mapModalTitle').textContent =
+    '🗺 D Map — ' + PARAM_LABELS[item.paramX].split(' ')[0] + ' × ' + PARAM_LABELS[item.paramY].split(' ')[0];
+  document.getElementById('mapModal').classList.add('open');
+  requestAnimationFrame(() => {
+    drawHeatmap(document.getElementById('mapModalCanvas'), item, true);
+  });
+}
+
+function closeMapModal() {
+  document.getElementById('mapModal').classList.remove('open');
+}
+
+function saveMapChart() {
+  if (!_currentMapModal) return;
+  const item = _currentMapModal;
+  const svg = buildMapSVG(item);
+  const labelX = PARAM_LABELS[item.paramX].split(' ')[0];
+  const labelY = PARAM_LABELS[item.paramY].split(' ')[0];
+  closeMapModal();
+  showSVGPreview(svg, '🗺 Map 矢量图: ' + labelX + ' × ' + labelY, 'map_' + item.paramX + '_' + item.paramY + '.svg');
+}
 </script>
 </body>
 </html>
